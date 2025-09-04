@@ -30,6 +30,17 @@
             </intent-filter>
         </activity>
 
+        <!-- Registration Activity -->
+        <activity
+            android:name=".RegistrationActivity"
+            android:exported="false"/>
+
+        <!-- Dashboard Activity -->
+        <activity
+            android:name=".DashboardActivity"
+            android:exported="false"/>
+
+
         <!-- Accessibility Service -->
         <service
             android:name=".RideAccessibilityService"

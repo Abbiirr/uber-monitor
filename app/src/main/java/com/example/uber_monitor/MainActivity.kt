@@ -87,6 +87,16 @@ class MainActivity : AppCompatActivity() {
                 }
                 finish()
             }
+
+            setOnClickListener {
+                val prefs = getSharedPreferences("uber_monitor_user", MODE_PRIVATE)
+                if (!prefs.getBoolean("registered", false)) {
+                    startActivity(Intent(this@MainActivity, RegistrationActivity::class.java))
+                } else {
+                    startActivity(Intent(this@MainActivity, DashboardActivity::class.java))
+                }
+                finish()
+            }
         }
 
         val instructionsText = TextView(this).apply {
@@ -128,7 +138,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updatePermissionStatus() {
-        val accessibilityEnabled = isAccessibilityServiceEnabled(this, RideAccessibilityService::class.java)
+        val accessibilityEnabled =
+            isAccessibilityServiceEnabled(this, RideAccessibilityService::class.java)
         val usageAccessEnabled = isUsageAccessGranted(this)
         val allPermissionsGranted = accessibilityEnabled && usageAccessEnabled
 
@@ -144,7 +155,11 @@ class MainActivity : AppCompatActivity() {
             // Auto-close after showing success message
             if (!hasShownSuccessMessage) {
                 hasShownSuccessMessage = true
-                Toast.makeText(this, "All permissions granted! Service is running.", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    this,
+                    "All permissions granted! Service is running.",
+                    Toast.LENGTH_LONG
+                ).show()
 
                 // Auto-close after 3 seconds
                 Handler(Looper.getMainLooper()).postDelayed({
@@ -159,12 +174,16 @@ class MainActivity : AppCompatActivity() {
         statusText.text = statusBuilder.toString()
 
         accessibilityButton.isEnabled = !accessibilityEnabled
-        accessibilityButton.text = if (accessibilityEnabled) "Accessibility Service Enabled ✓" else "Enable Accessibility Service"
-        accessibilityButton.visibility = if (accessibilityEnabled) android.view.View.GONE else android.view.View.VISIBLE
+        accessibilityButton.text =
+            if (accessibilityEnabled) "Accessibility Service Enabled ✓" else "Enable Accessibility Service"
+        accessibilityButton.visibility =
+            if (accessibilityEnabled) android.view.View.GONE else android.view.View.VISIBLE
 
         usageAccessButton.isEnabled = !usageAccessEnabled
-        usageAccessButton.text = if (usageAccessEnabled) "Usage Access Enabled ✓" else "Enable Usage Access"
-        usageAccessButton.visibility = if (usageAccessEnabled) android.view.View.GONE else android.view.View.VISIBLE
+        usageAccessButton.text =
+            if (usageAccessEnabled) "Usage Access Enabled ✓" else "Enable Usage Access"
+        usageAccessButton.visibility =
+            if (usageAccessEnabled) android.view.View.GONE else android.view.View.VISIBLE
     }
 
     private fun checkServiceStatus() {
@@ -193,7 +212,8 @@ class MainActivity : AppCompatActivity() {
         ) ?: return false
 
         return enabledServicesSetting.split(":").any {
-            ComponentName.unflattenFromString(it)?.flattenToString() == expectedComponentName.flattenToString()
+            ComponentName.unflattenFromString(it)
+                ?.flattenToString() == expectedComponentName.flattenToString()
         }
     }
 

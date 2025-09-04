@@ -1,5 +1,6 @@
 package com.example.uber_monitor
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
@@ -94,6 +95,7 @@ class RegistrationActivity : AppCompatActivity() {
             )
             setOnClickListener {
                 saveUserData("", "")
+                startActivity(Intent(this@RegistrationActivity, DashboardActivity::class.java))
                 finish()
             }
         }
@@ -172,6 +174,7 @@ class RegistrationActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 progressBar.visibility = android.view.View.GONE
                 Toast.makeText(this@RegistrationActivity, "Registration complete!", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this@RegistrationActivity, DashboardActivity::class.java))
                 finish()
             }
         }
@@ -187,6 +190,8 @@ class RegistrationActivity : AppCompatActivity() {
             apply()
         }
     }
+
+
 
     override fun onDestroy() {
         super.onDestroy()
