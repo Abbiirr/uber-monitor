@@ -3,4 +3,10 @@
     <string name="app_name">Uber Monitor</string>
     <string name="accessibility_service_label">Ride App Monitor</string>
     <string name="accessibility_service_description">This service monitors ride-hailing apps (Uber and Pathao) to extract relevant information like prices, distances, and trip details. No screenshots are taken. The service only reads UI elements when these apps are active.</string>
+    <string name="john_smith">John Smith</string>
+    <string name="js">JS</string>
+    <string name="_1_555_123_4567">+1 (555) 123-4567</string>
+    <string name="online">Online</string>
+    <string name="dot">•</string>
+    <string name="active">Active</string>
 </resources>
