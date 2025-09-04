@@ -15,6 +15,10 @@ import com.example.uber_monitor.databinding.NavHeaderBinding
 import com.google.android.material.navigation.NavigationView
 import java.text.SimpleDateFormat
 import java.util.*
+import kotlinx.coroutines.*
+import java.net.HttpURLConnection
+import java.net.URL
+import org.json.JSONObject
 
 class DashboardActivity : AppCompatActivity() {
 
@@ -51,6 +55,9 @@ class DashboardActivity : AppCompatActivity() {
         val prefs = getSharedPreferences("uber_monitor_user", MODE_PRIVATE)
         val userName = prefs.getString("user_name", "Driver") ?: "Driver"
         val userPhone = prefs.getString("user_phone", "+1 (555) 123-4567") ?: ""
+
+
+
 
         navBinding.tvUserName.text = userName
         navBinding.tvUserPhone.text = userPhone
@@ -120,46 +127,60 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun updateStats() {
-        // Load stats from SharedPreferences
-        val statsPrefs = getSharedPreferences("uber_monitor_stats", MODE_PRIVATE)
+        val scope = CoroutineScope(Dispatchers.Main + Job())
+        scope.launch {
+            try {
+                val response = withContext(Dispatchers.IO) {
+                    val url = URL("https://your-api-endpoint.com/dashboard/stats")
+                    val connection = url.openConnection() as HttpURLConnection
+                    connection.requestMethod = "GET"
+                    connection.connectTimeout = 5000
+                    connection.readTimeout = 5000
 
-        // Update UI with stats
+                    if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                        connection.inputStream.bufferedReader().readText()
+                    } else null
+                }
+
+                response?.let {
+                    val json = JSONObject(it)
+                    binding.apply {
+                        tvRequestsReceived.text = json.optString("requests_received", "24")
+                        tvRidesAccepted.text = json.optString("rides_accepted", "18")
+                        tvRidesFinished.text = json.optString("rides_finished", "15")
+                        tvActiveRides.text = json.optString("active_rides", "3")
+                        tvTimeDriven.text = json.optString("time_driven", "6h 24m")
+                        tvTodayEarnings.text = "$${json.optDouble("today_earnings", 85.30)}"
+                        tvTotalEarned.text = "$${json.optDouble("total_earned", 142.50)}"
+                        tvRating.text = json.optString("rating", "4.8")
+                    }
+                } ?: loadHardcodedData()
+
+            } catch (e: Exception) {
+                loadHardcodedData()
+            }
+        }
+    }
+
+    private fun loadHardcodedData() {
         binding.apply {
-            // Requests received (sample data)
             tvRequestsReceived.text = "24"
             tvRequestsSubtext.text = "New requests today"
             tvRequestsChange.text = "+12%"
-
-            // Rides accepted
-            val acceptedRides = statsPrefs.getInt("accepted_rides", 18)
-            tvRidesAccepted.text = acceptedRides.toString()
+            tvRidesAccepted.text = "18"
             tvAcceptedSubtext.text = "Out of 24 requests"
             tvAcceptedChange.text = "+8%"
-
-            // Rides finished
-            val totalRides = statsPrefs.getInt("total_rides", 15)
-            tvRidesFinished.text = totalRides.toString()
+            tvRidesFinished.text = "15"
             tvFinishedSubtext.text = "Successfully completed"
-
-            // Active rides
             tvActiveRides.text = "3"
             tvActiveSubtext.text = "Currently in progress"
-
-            // Time driven
             tvTimeDriven.text = "6h 24m"
             tvTimeSubtext.text = "Today's driving time"
-
-            // Earnings
-            val earnings = statsPrefs.getFloat("total_earnings", 85.30f)
-            tvTodayEarnings.text = String.format("$%.2f", earnings)
+            tvTodayEarnings.text = "$85.30"
             tvEarningsSubtext.text = "From completed rides"
             tvEarningsChange.text = "+15%"
-
-            // Total earned
             tvTotalEarned.text = "$142.50"
             tvTotalSubtext.text = "All time earnings"
-
-            // Rating
             tvRating.text = "4.8"
             tvRatingSubtext.text = "Driver rating"
         }
@@ -179,4 +200,10 @@ class DashboardActivity : AppCompatActivity() {
         val time: String,
         val amount: String?
     )
+
+    override fun onDestroy() {
+        val scope = CoroutineScope(Dispatchers.Main + Job())
+        super.onDestroy()
+        scope.cancel()
+    }
 }
