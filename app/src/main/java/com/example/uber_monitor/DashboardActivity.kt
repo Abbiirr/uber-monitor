@@ -2,8 +2,10 @@ package com.example.uber_monitor
 
 import android.os.Bundle
 import android.view.View
-import android.widget.LinearLayout
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.widget.PopupWindow
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.GravityCompat
@@ -85,18 +87,28 @@ class DashboardActivity : AppCompatActivity() {
 
             popupView.findViewById<TextView>(R.id.popup_user_name).text = userName
             popupView.findViewById<TextView>(R.id.popup_user_phone).text = userPhone
-            popupView.findViewById<TextView>(R.id.popup_close).setOnClickListener {
-                popupWindow.dismiss()
-            }
 
             popupWindow.elevation = 10f
             popupWindow.showAsDropDown(binding.tvUserAvatar, 0, 0)
         }
-        binding.tvUserAvatar.text = userName.split(" ")
-            .mapNotNull { it.firstOrNull()?.toString() }
-            .take(2)
-            .joinToString("")
-            .uppercase()
+        binding.tvUserAvatar.setOnClickListener {
+            val popupView = layoutInflater.inflate(R.layout.popup_user_profile, null)
+            val popupWindow = PopupWindow(
+                popupView,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                true
+            )
+
+            popupView.findViewById<TextView>(R.id.popup_user_name).text = userName
+            popupView.findViewById<TextView>(R.id.popup_user_phone).text = userPhone
+
+            popupWindow.elevation = 10f
+            popupWindow.isOutsideTouchable = true
+            popupWindow.isFocusable = true
+            popupWindow.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            popupWindow.showAsDropDown(binding.tvUserAvatar, -100, 10)
+        }
     }
 
     private fun setupDashboard() {
