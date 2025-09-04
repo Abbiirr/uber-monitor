@@ -1,15 +1,12 @@
 package com.example.uber_monitor
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import android.content.ComponentName
@@ -19,20 +16,14 @@ import android.widget.ScrollView
 
 class MainActivity : AppCompatActivity() {
 
-    companion object {
-        private const val REQUEST_MEDIA_PROJECTION = 1001
-    }
-
     private lateinit var statusText: TextView
     private lateinit var accessibilityButton: Button
     private lateinit var usageAccessButton: Button
-    private lateinit var screenCaptureButton: Button
     private lateinit var logTextView: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Create a proper UI layout
         val scrollView = ScrollView(this)
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -40,21 +31,18 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER_HORIZONTAL
         }
 
-        // Title
         val titleText = TextView(this).apply {
             text = "Uber Monitor Service"
             textSize = 24f
             setPadding(0, 0, 0, 20)
         }
 
-        // Status text
         statusText = TextView(this).apply {
             text = "Checking permissions..."
             textSize = 16f
             setPadding(0, 20, 0, 40)
         }
 
-        // Accessibility button
         accessibilityButton = Button(this).apply {
             text = "Enable Accessibility Service"
             layoutParams = LinearLayout.LayoutParams(
@@ -66,7 +54,6 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { promptForAccessibilityService() }
         }
 
-        // Usage access button
         usageAccessButton = Button(this).apply {
             text = "Enable Usage Access"
             layoutParams = LinearLayout.LayoutParams(
@@ -78,34 +65,19 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { promptForUsageAccess() }
         }
 
-        // Screen capture button
-        screenCaptureButton = Button(this).apply {
-            text = "Grant Screen Capture Permission"
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 10, 0, 10)
-            }
-            setOnClickListener { requestMediaProjection() }
-        }
-
-        // Instructions text
         val instructionsText = TextView(this).apply {
             text = """
                 Instructions:
                 1. Enable Accessibility Service to monitor app events
                 2. Enable Usage Access to detect foreground apps
-                3. Grant Screen Capture permission for screenshots
-                4. Open Uber Driver app (com.ubercab.driver)
+                3. Open Uber Driver app (com.ubercab.driver)
                 
-                The service will detect Uber Driver and capture screenshots.
+                The service will detect and log Uber Driver activity.
             """.trimIndent()
             textSize = 14f
             setPadding(0, 40, 0, 20)
         }
 
-        // Log display
         logTextView = TextView(this).apply {
             text = "Service Logs:\n"
             textSize = 12f
@@ -113,12 +85,10 @@ class MainActivity : AppCompatActivity() {
             setBackgroundColor(0xFFF0F0F0.toInt())
         }
 
-        // Add views to layout
         layout.addView(titleText)
         layout.addView(statusText)
         layout.addView(accessibilityButton)
         layout.addView(usageAccessButton)
-        layout.addView(screenCaptureButton)
         layout.addView(instructionsText)
         layout.addView(logTextView)
 
@@ -135,15 +105,13 @@ class MainActivity : AppCompatActivity() {
     private fun updatePermissionStatus() {
         val accessibilityEnabled = isAccessibilityServiceEnabled(this, UberAccessibilityService::class.java)
         val usageAccessEnabled = isUsageAccessGranted(this)
-        val screenCaptureEnabled = MediaProjectionSingleton.projectionData != null
 
         val statusBuilder = StringBuilder()
         statusBuilder.append("Permissions Status:\n\n")
         statusBuilder.append("✓ Accessibility: ${if (accessibilityEnabled) "Enabled ✓" else "Disabled ✗"}\n")
-        statusBuilder.append("✓ Usage Access: ${if (usageAccessEnabled) "Enabled ✓" else "Disabled ✗"}\n")
-        statusBuilder.append("✓ Screen Capture: ${if (screenCaptureEnabled) "Granted ✓" else "Not Granted ✗"}\n\n")
+        statusBuilder.append("✓ Usage Access: ${if (usageAccessEnabled) "Enabled ✓" else "Disabled ✗"}\n\n")
 
-        if (accessibilityEnabled && usageAccessEnabled && screenCaptureEnabled) {
+        if (accessibilityEnabled && usageAccessEnabled) {
             statusBuilder.append("✓ All permissions granted! Service is ready.")
         } else {
             statusBuilder.append("⚠ Please grant all permissions to start monitoring.")
@@ -151,15 +119,11 @@ class MainActivity : AppCompatActivity() {
 
         statusText.text = statusBuilder.toString()
 
-        // Update button states
         accessibilityButton.isEnabled = !accessibilityEnabled
         accessibilityButton.text = if (accessibilityEnabled) "Accessibility Service Enabled ✓" else "Enable Accessibility Service"
 
         usageAccessButton.isEnabled = !usageAccessEnabled
         usageAccessButton.text = if (usageAccessEnabled) "Usage Access Enabled ✓" else "Enable Usage Access"
-
-        screenCaptureButton.isEnabled = !screenCaptureEnabled
-        screenCaptureButton.text = if (screenCaptureEnabled) "Screen Capture Granted ✓" else "Grant Screen Capture Permission"
     }
 
     private fun checkServiceStatus() {
@@ -178,28 +142,6 @@ class MainActivity : AppCompatActivity() {
             - com.pathao (Pathao)
             - com.pathao.driver (Pathao Driver)
         """.trimIndent()
-    }
-
-    private fun requestMediaProjection() {
-        val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        startActivityForResult(
-            projectionManager.createScreenCaptureIntent(),
-            REQUEST_MEDIA_PROJECTION
-        )
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        if (requestCode == REQUEST_MEDIA_PROJECTION) {
-            if (resultCode == Activity.RESULT_OK && data != null) {
-                MediaProjectionSingleton.projectionData = data
-                Toast.makeText(this, "Screen capture permission granted!", Toast.LENGTH_SHORT).show()
-                updatePermissionStatus()
-            } else {
-                Toast.makeText(this, "Screen capture permission denied", Toast.LENGTH_SHORT).show()
-            }
-        }
     }
 
     private fun isAccessibilityServiceEnabled(context: Context, service: Class<*>): Boolean {
