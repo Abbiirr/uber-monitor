@@ -81,6 +81,10 @@ class MainActivity : AppCompatActivity() {
             }
             visibility = android.view.View.GONE
             setOnClickListener {
+                val prefs = getSharedPreferences("uber_monitor_user", MODE_PRIVATE)
+                if (!prefs.getBoolean("registered", false)) {
+                    startActivity(Intent(this@MainActivity, RegistrationActivity::class.java))
+                }
                 finish()
             }
         }
@@ -124,7 +128,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updatePermissionStatus() {
-        val accessibilityEnabled = isAccessibilityServiceEnabled(this, UberAccessibilityService::class.java)
+        val accessibilityEnabled = isAccessibilityServiceEnabled(this, RideAccessibilityService::class.java)
         val usageAccessEnabled = isUsageAccessGranted(this)
         val allPermissionsGranted = accessibilityEnabled && usageAccessEnabled
 

@@ -9,7 +9,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import java.text.SimpleDateFormat
 import java.util.*
 
-class UberAccessibilityService : AccessibilityService() {
+class RideAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "UberAccService"
@@ -73,6 +73,9 @@ class UberAccessibilityService : AccessibilityService() {
             if (allText.isNotEmpty()) {
                 Log.i(TAG, "Uber Driver screen content: ${allText.take(200)}")
                 updateServiceLog("Uber Driver active - extracted ${allText.split(" ").size} words")
+
+                // Track statistics
+                trackRideStatistics(allText)
             }
 
             val targetNode = findUberDriverElements(rootNode)
@@ -84,6 +87,39 @@ class UberAccessibilityService : AccessibilityService() {
         } finally {
             rootNode.recycle()
         }
+    }
+
+    private fun trackRideStatistics(text: String) {
+        val prefs = getSharedPreferences("uber_monitor_stats", Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+
+        // Look for ride-related keywords
+        when {
+            text.contains("Accept", ignoreCase = true) -> {
+                val totalRides = prefs.getInt("total_rides", 0) + 1
+                editor.putInt("total_rides", totalRides)
+            }
+            text.contains("Completed", ignoreCase = true) -> {
+                val accepted = prefs.getInt("accepted_rides", 0) + 1
+                editor.putInt("accepted_rides", accepted)
+            }
+            text.contains("Online", ignoreCase = true) -> {
+                editor.putLong("last_online_time", System.currentTimeMillis())
+            }
+            text.contains("৳") || text.contains("$") -> {
+                // Extract earnings if visible
+                val pattern = "[৳$]\\s?\\d+".toRegex()
+                pattern.find(text)?.let { match ->
+                    val amount = match.value.replace("[৳$\\s]".toRegex(), "").toFloatOrNull()
+                    if (amount != null) {
+                        val earnings = prefs.getFloat("total_earnings", 0f) + amount
+                        editor.putFloat("total_earnings", earnings)
+                    }
+                }
+            }
+        }
+
+        editor.apply()
     }
 
     private fun handleUberEvent(event: AccessibilityEvent) {
