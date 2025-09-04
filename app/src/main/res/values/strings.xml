@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Uber Monitor</string>
-    <string name="accessibility_service_description">
-        Service to monitor Uber and Pathao screens for ride information and capture screenshots.
-    </string>
+    <string name="accessibility_service_label">Ride App Monitor</string>
+    <string name="accessibility_service_description">This service monitors ride-hailing apps (Uber and Pathao) to extract relevant information like prices, distances, and trip details. No screenshots are taken. The service only reads UI elements when these apps are active.</string>
 </resources>
