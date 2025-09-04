@@ -3,6 +3,8 @@ package com.example.uber_monitor
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import android.widget.Button
 import android.widget.LinearLayout
@@ -13,13 +15,17 @@ import android.content.ComponentName
 import android.app.AppOpsManager
 import android.view.Gravity
 import android.widget.ScrollView
+import android.widget.Toast
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var statusText: TextView
     private lateinit var accessibilityButton: Button
     private lateinit var usageAccessButton: Button
+    private lateinit var continueButton: Button
     private lateinit var logTextView: TextView
+
+    private var hasShownSuccessMessage = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -65,6 +71,20 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { promptForUsageAccess() }
         }
 
+        continueButton = Button(this).apply {
+            text = "Continue ✓"
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(0, 20, 0, 10)
+            }
+            visibility = android.view.View.GONE
+            setOnClickListener {
+                finish()
+            }
+        }
+
         val instructionsText = TextView(this).apply {
             text = """
                 Instructions:
@@ -89,6 +109,7 @@ class MainActivity : AppCompatActivity() {
         layout.addView(statusText)
         layout.addView(accessibilityButton)
         layout.addView(usageAccessButton)
+        layout.addView(continueButton)
         layout.addView(instructionsText)
         layout.addView(logTextView)
 
@@ -105,25 +126,41 @@ class MainActivity : AppCompatActivity() {
     private fun updatePermissionStatus() {
         val accessibilityEnabled = isAccessibilityServiceEnabled(this, UberAccessibilityService::class.java)
         val usageAccessEnabled = isUsageAccessGranted(this)
+        val allPermissionsGranted = accessibilityEnabled && usageAccessEnabled
 
         val statusBuilder = StringBuilder()
         statusBuilder.append("Permissions Status:\n\n")
         statusBuilder.append("✓ Accessibility: ${if (accessibilityEnabled) "Enabled ✓" else "Disabled ✗"}\n")
         statusBuilder.append("✓ Usage Access: ${if (usageAccessEnabled) "Enabled ✓" else "Disabled ✗"}\n\n")
 
-        if (accessibilityEnabled && usageAccessEnabled) {
+        if (allPermissionsGranted) {
             statusBuilder.append("✓ All permissions granted! Service is ready.")
+            continueButton.visibility = android.view.View.VISIBLE
+
+            // Auto-close after showing success message
+            if (!hasShownSuccessMessage) {
+                hasShownSuccessMessage = true
+                Toast.makeText(this, "All permissions granted! Service is running.", Toast.LENGTH_LONG).show()
+
+                // Auto-close after 3 seconds
+                Handler(Looper.getMainLooper()).postDelayed({
+                    finish()
+                }, 3000)
+            }
         } else {
             statusBuilder.append("⚠ Please grant all permissions to start monitoring.")
+            continueButton.visibility = android.view.View.GONE
         }
 
         statusText.text = statusBuilder.toString()
 
         accessibilityButton.isEnabled = !accessibilityEnabled
         accessibilityButton.text = if (accessibilityEnabled) "Accessibility Service Enabled ✓" else "Enable Accessibility Service"
+        accessibilityButton.visibility = if (accessibilityEnabled) android.view.View.GONE else android.view.View.VISIBLE
 
         usageAccessButton.isEnabled = !usageAccessEnabled
         usageAccessButton.text = if (usageAccessEnabled) "Usage Access Enabled ✓" else "Enable Usage Access"
+        usageAccessButton.visibility = if (usageAccessEnabled) android.view.View.GONE else android.view.View.VISIBLE
     }
 
     private fun checkServiceStatus() {
