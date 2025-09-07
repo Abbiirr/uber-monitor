@@ -5,5 +5,5 @@
     android:accessibilityFeedbackType="feedbackSpoken"
     android:notificationTimeout="100"
     android:canRetrieveWindowContent="true"
-    android:packageNames="com.pathao.driver,com.ubercab.driver"
+    android:packageNames="${BuildConfig.PATHAO_PKG}"
     android:settingsActivity="com.example.uber_monitor.MainActivity" />
