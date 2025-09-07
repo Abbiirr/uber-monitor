@@ -35,13 +35,13 @@
                         android:layout_height="48dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:src="@drawable/ic_menu"
-                        android:contentDescription="Menu" />
+                        android:contentDescription="@string/menu" />
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="Driver Dashboard"
+                        android:text="@string/driver_dashboard"
                         android:textColor="@color/black"
                         android:textSize="20sp"
                         android:textStyle="bold" />
@@ -53,10 +53,11 @@
                         android:layout_marginEnd="16dp"
                         android:background="@drawable/circle_bg_blue"
                         android:gravity="center"
-                        android:text="JS"
+                        android:text=""
                         android:textColor="@color/white"
                         android:textSize="14sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        tools:text="JD" />
 
                 </LinearLayout>
 
@@ -87,7 +88,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Welcome back!"
+                        android:text="@string/welcome_back"
                         android:textColor="@color/black"
                         android:textSize="24sp"
                         android:textStyle="bold" />
@@ -95,7 +96,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Here's your driving activity overview for today."
+                        android:text="@string/overview_message"
                         android:textColor="#666666"
                         android:textSize="14sp" />
 
@@ -131,7 +132,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Pathao Drive"
+                                android:text="@string/pathao_drive"
                                 android:textColor="@color/black"
                                 android:textSize="16sp"
                                 android:textStyle="bold"
@@ -155,7 +156,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Total Requests"
+                                    android:text="@string/total_requests"
                                     android:textColor="#666666"
                                     android:textSize="12sp" />
 
@@ -163,11 +164,12 @@
                                     android:id="@+id/tv_pathao_requests"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="11465"
+                                    android:text="0"
                                     android:textColor="@color/black"
                                     android:textSize="28sp"
                                     android:textStyle="bold"
-                                    android:layout_marginTop="4dp" />
+                                    android:layout_marginTop="4dp"
+                                    tools:text="11465" />
 
                                 <LinearLayout
                                     android:layout_width="match_parent"
@@ -179,16 +181,18 @@
                                         android:layout_width="0dp"
                                         android:layout_height="wrap_content"
                                         android:layout_weight="1"
-                                        android:text="All time requests"
+                                        android:text="@string/all_time_requests"
                                         android:textColor="#999999"
                                         android:textSize="11sp" />
 
                                     <TextView
+                                        android:id="@+id/tv_pathao_growth"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="+12%"
+                                        android:text=""
                                         android:textColor="#4CAF50"
-                                        android:textSize="11sp" />
+                                        android:textSize="11sp"
+                                        tools:text="+12%" />
 
                                 </LinearLayout>
 
@@ -207,7 +211,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Trips Finished"
+                                    android:text="@string/trips_finished"
                                     android:textColor="#666666"
                                     android:textSize="12sp" />
 
@@ -215,16 +219,17 @@
                                     android:id="@+id/tv_pathao_trips_finished"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="11465"
+                                    android:text="0"
                                     android:textColor="@color/black"
                                     android:textSize="28sp"
                                     android:textStyle="bold"
-                                    android:layout_marginTop="4dp" />
+                                    android:layout_marginTop="4dp"
+                                    tools:text="11465" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Successfully completed"
+                                    android:text="@string/successfully_completed"
                                     android:textColor="#999999"
                                     android:textSize="11sp" />
 
@@ -266,7 +271,7 @@
                             <TextView
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Uber Drive"
+                                android:text="@string/uber_drive"
                                 android:textColor="@color/black"
                                 android:textSize="16sp"
                                 android:textStyle="bold"
@@ -290,7 +295,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Total Requests"
+                                    android:text="@string/total_requests"
                                     android:textColor="#666666"
                                     android:textSize="12sp" />
 
@@ -298,11 +303,12 @@
                                     android:id="@+id/tv_uber_requests"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="11476"
+                                    android:text="0"
                                     android:textColor="@color/black"
                                     android:textSize="28sp"
                                     android:textStyle="bold"
-                                    android:layout_marginTop="4dp" />
+                                    android:layout_marginTop="4dp"
+                                    tools:text="11476" />
 
                                 <LinearLayout
                                     android:layout_width="match_parent"
@@ -314,16 +320,18 @@
                                         android:layout_width="0dp"
                                         android:layout_height="wrap_content"
                                         android:layout_weight="1"
-                                        android:text="All time requests"
+                                        android:text="@string/all_time_requests"
                                         android:textColor="#999999"
                                         android:textSize="11sp" />
 
                                     <TextView
+                                        android:id="@+id/tv_uber_growth"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
-                                        android:text="+12%"
+                                        android:text=""
                                         android:textColor="#4CAF50"
-                                        android:textSize="11sp" />
+                                        android:textSize="11sp"
+                                        tools:text="+12%" />
 
                                 </LinearLayout>
 
@@ -342,7 +350,7 @@
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Trips Finished"
+                                    android:text="@string/trips_finished"
                                     android:textColor="#666666"
                                     android:textSize="12sp" />
 
@@ -350,16 +358,17 @@
                                     android:id="@+id/tv_uber_trips_finished"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="11476"
+                                    android:text="0"
                                     android:textColor="@color/black"
                                     android:textSize="28sp"
                                     android:textStyle="bold"
-                                    android:layout_marginTop="4dp" />
+                                    android:layout_marginTop="4dp"
+                                    tools:text="11476" />
 
                                 <TextView
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Successfully completed"
+                                    android:text="@string/successfully_completed"
                                     android:textColor="#999999"
                                     android:textSize="11sp" />
 

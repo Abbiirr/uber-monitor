@@ -3,6 +3,7 @@ package com.example.uber_monitor
 import android.os.Bundle
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.util.Log
 import android.widget.PopupWindow
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -16,6 +17,7 @@ import kotlinx.coroutines.*
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject
+import android.widget.Toast
 
 class DashboardActivity : AppCompatActivity() {
 
@@ -28,8 +30,21 @@ class DashboardActivity : AppCompatActivity() {
         binding = ActivityDashboardBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        initializeViews()
         setupDrawer()
         updateStats()
+    }
+
+    private fun initializeViews() {
+        // Initialize all stat views with default values
+        binding.apply {
+            tvPathaoRequests.text = "0"
+            tvPathaoTripsFinished.text = "0"
+            tvUberRequests.text = "0"
+            tvUberTripsFinished.text = "0"
+            tvPathaoGrowth.text = ""
+            tvUberGrowth.text = ""
+        }
     }
 
     private fun setupDrawer() {
@@ -42,23 +57,18 @@ class DashboardActivity : AppCompatActivity() {
 
         // Load user data
         val prefs = getSharedPreferences("uber_monitor_user", MODE_PRIVATE)
-        val userName = prefs.getString("user_name", "Driver") ?: "Driver"
-        val userPhone = prefs.getString("user_phone", "+1 (555) 123-4567") ?: ""
+        val userName = prefs.getString("user_name", "") ?: ""
+        val userPhone = prefs.getString("user_phone", "") ?: ""
 
-        navBinding.tvUserName.text = userName
+        // Update navigation header
+        navBinding.tvUserName.text = if (userName.isNotEmpty()) userName else "User"
         navBinding.tvUserPhone.text = userPhone
-        navBinding.tvUserInitials.text = userName.split(" ")
-            .mapNotNull { it.firstOrNull()?.toString() }
-            .take(2)
-            .joinToString("")
-            .uppercase()
 
-        // Update avatar initials
-        binding.tvUserAvatar.text = userName.split(" ")
-            .mapNotNull { it.firstOrNull()?.toString() }
-            .take(2)
-            .joinToString("")
-            .uppercase()
+        val initials = getInitialsFromName(userName)
+        navBinding.tvUserInitials.text = initials
+
+        // Update avatar initials in toolbar
+        binding.tvUserAvatar.text = initials
 
         // Handle menu button
         binding.btnMenu.setOnClickListener {
@@ -86,7 +96,8 @@ class DashboardActivity : AppCompatActivity() {
                 true
             )
 
-            popupView.findViewById<TextView>(R.id.popup_user_name).text = userName
+            popupView.findViewById<TextView>(R.id.popup_user_name).text =
+                if (userName.isNotEmpty()) userName else "User"
             popupView.findViewById<TextView>(R.id.popup_user_phone).text = userPhone
 
             popupWindow.elevation = 10f
@@ -97,56 +108,97 @@ class DashboardActivity : AppCompatActivity() {
         }
     }
 
+    private fun getInitialsFromName(name: String): String {
+        return if (name.isNotEmpty()) {
+            name.split(" ")
+                .mapNotNull { it.firstOrNull()?.toString() }
+                .take(2)
+                .joinToString("")
+                .uppercase()
+        } else {
+            "U"
+        }
+    }
+
     private fun updateStats() {
         scope.launch {
             try {
                 val response = withContext(Dispatchers.IO) {
-                    val url = URL("https://your-api-endpoint.com/dashboard/stats")
-                    val connection = url.openConnection() as HttpURLConnection
-                    connection.requestMethod = "GET"
-                    connection.connectTimeout = 5000
-                    connection.readTimeout = 5000
-
-                    if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                        connection.inputStream.bufferedReader().readText()
-                    } else null
+                    ApiHelper.makeAuthenticatedRequest(
+                        this@DashboardActivity,
+                        "https://giglytech-user-service-api.global.fintech23.xyz/api/v1/user/data-collector/summary",
+                        "POST",
+                        JSONObject() // Empty body for POST
+                    )
                 }
 
                 response?.let {
                     val json = JSONObject(it)
-                    val data = json.getJSONArray("data")
+                    if (json.getString("responseCode") == "S100000") {
+                        val data = json.getJSONArray("data")
 
-                    for (i in 0 until data.length()) {
-                        val platform = data.getJSONObject(i)
-                        val platformName = platform.getString("platform")
-                        val totalRequests = platform.getInt("totalRequests")
-                        val totalTripsFinished = platform.getInt("totalTripsFinished")
+                        for (i in 0 until data.length()) {
+                            val platform = data.getJSONObject(i)
+                            val platformName = platform.getString("platform")
+                            val totalRequests = platform.getInt("totalRequests")
+                            val totalTripsFinished = platform.getInt("totalTripsFinished")
 
-                        when (platformName) {
-                            "Pathao" -> {
-                                binding.tvPathaoRequests.text = totalRequests.toString()
-                                binding.tvPathaoTripsFinished.text = totalTripsFinished.toString()
-                            }
-                            "Uber" -> {
-                                binding.tvUberRequests.text = totalRequests.toString()
-                                binding.tvUberTripsFinished.text = totalTripsFinished.toString()
+                            // Calculate growth percentage if available
+                            val growth = platform.optDouble("growth", 0.0)
+
+                            when (platformName) {
+                                "Pathao" -> {
+                                    binding.tvPathaoRequests.text = totalRequests.toString()
+                                    binding.tvPathaoTripsFinished.text = totalTripsFinished.toString()
+                                    if (growth != 0.0) {
+                                        binding.tvPathaoGrowth.text = String.format("%+.0f%%", growth)
+                                        binding.tvPathaoGrowth.setTextColor(
+                                            if (growth > 0) getColor(R.color.green) else getColor(R.color.red)
+                                        )
+                                    }
+                                }
+                                "Uber" -> {
+                                    binding.tvUberRequests.text = totalRequests.toString()
+                                    binding.tvUberTripsFinished.text = totalTripsFinished.toString()
+                                    if (growth != 0.0) {
+                                        binding.tvUberGrowth.text = String.format("%+.0f%%", growth)
+                                        binding.tvUberGrowth.setTextColor(
+                                            if (growth > 0) getColor(R.color.green) else getColor(R.color.red)
+                                        )
+                                    }
+                                }
                             }
                         }
+                    } else {
+                        setDefaultValues()
                     }
-                } ?: loadHardcodedData()
+                } ?: run {
+                    val authPrefs = getSharedPreferences("uber_monitor_auth", MODE_PRIVATE)
+                    if (authPrefs.getString("access_token", "").isNullOrEmpty()) {
+                        runOnUiThread {
+                            Toast.makeText(this@DashboardActivity,
+                                "Authentication failed. Please clear app data and try again.",
+                                Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    setDefaultValues()
+                }
 
             } catch (e: Exception) {
-                loadHardcodedData()
+                Log.e("DashboardActivity", "Failed to fetch stats", e)
+                setDefaultValues()
             }
         }
     }
 
-    private fun loadHardcodedData() {
+    private fun setDefaultValues() {
         binding.apply {
-            tvPathaoRequests.text = "11465"
-            tvPathaoTripsFinished.text = "11465"
-            tvUberRequests.text = "11476"
-            tvUberTripsFinished.text = "11476"
+            tvPathaoRequests.text = "0"
+            tvPathaoTripsFinished.text = "0"
+            tvUberRequests.text = "0"
+            tvUberTripsFinished.text = "0"
+            tvPathaoGrowth.text = ""
+            tvUberGrowth.text = ""
         }
     }
 

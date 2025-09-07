@@ -9,4 +9,19 @@
     <string name="online">Online</string>
     <string name="dot">•</string>
     <string name="active">Active</string>
+
+    <string name="menu">Menu</string>
+    <string name="driver_dashboard">Driver Dashboard</string>
+    <string name="welcome_back">Welcome back!</string>
+    <string name="overview_message">Here\'s your driving activity overview for today.</string>
+
+    <!-- Platform Names -->
+    <string name="pathao_drive">Pathao Drive</string>
+    <string name="uber_drive">Uber Drive</string>
+
+    <!-- Statistics Labels -->
+    <string name="total_requests">Total Requests</string>
+    <string name="trips_finished">Trips Finished</string>
+    <string name="all_time_requests">All time requests</string>
+    <string name="successfully_completed">Successfully completed</string>
 </resources>
