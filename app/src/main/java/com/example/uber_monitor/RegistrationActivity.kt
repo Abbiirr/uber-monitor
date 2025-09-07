@@ -9,7 +9,6 @@ import kotlinx.coroutines.*
 import java.net.HttpURLConnection
 import java.net.URL
 import org.json.JSONObject
-import kotlin.math.log
 import android.util.Log
 
 class RegistrationActivity : AppCompatActivity() {
@@ -58,7 +57,7 @@ class RegistrationActivity : AppCompatActivity() {
         }
 
         phoneInput = EditText(this).apply {
-            hint = "Enter your phone number"
+            hint = "Enter your phone number (e.g. +8801XXXXXXXXX)"
             inputType = android.text.InputType.TYPE_CLASS_PHONE
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -94,9 +93,8 @@ class RegistrationActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
             setOnClickListener {
-                saveUserData("", "")
-                startActivity(Intent(this@RegistrationActivity, DashboardActivity::class.java))
-                finish()
+                saveUserData("Guest", "")
+                navigateToDashboard()
             }
         }
 
@@ -127,56 +125,102 @@ class RegistrationActivity : AppCompatActivity() {
             return
         }
 
+        // Basic phone validation for international format
+        if (!phone.startsWith("+")) {
+            Toast.makeText(this, "Please enter phone number with country code (e.g. +880...)", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         submitButton.isEnabled = false
         progressBar.visibility = android.view.View.VISIBLE
 
         scope.launch {
-            // Save locally first
             saveUserData(name, phone)
 
-            // Try API call in background
-            withContext(Dispatchers.IO) {
-                try {
-                    // TODO: Replace with actual API endpoint
-                    val url = URL("https://your-api-endpoint.com/register")
-                    val connection = url.openConnection() as HttpURLConnection
-
-                    connection.requestMethod = "POST"
-                    connection.setRequestProperty("Content-Type", "application/json")
-                    connection.doOutput = true
-
-                    val json = JSONObject().apply {
-                        put("name", name)
-                        put("phone", phone)
-                        put("device_id", android.provider.Settings.Secure.getString(
-                            contentResolver,
-                            android.provider.Settings.Secure.ANDROID_ID
-                        ))
-                    }
-
-                    connection.outputStream.use {
-                        it.write(json.toString().toByteArray())
-                    }
-
-                    val responseCode = connection.responseCode
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        // Success - but we don't show this to user
-                    }
-                    connection.disconnect()
-                } catch (e: Exception) {
-                    // Silently fail - user continues regardless
-                    e.printStackTrace()
-                }
+            val success = withContext(Dispatchers.IO) {
+                registerUser(name, phone)
             }
 
-            // Always proceed after a short delay
-            delay(1000)
+            delay(500)
             withContext(Dispatchers.Main) {
                 progressBar.visibility = android.view.View.GONE
-                Toast.makeText(this@RegistrationActivity, "Registration complete!", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this@RegistrationActivity, DashboardActivity::class.java))
-                finish()
+                submitButton.isEnabled = true
+
+                if (success) {
+                    Toast.makeText(this@RegistrationActivity, "Registration successful!", Toast.LENGTH_SHORT).show()
+                    navigateToDashboard()
+                } else {
+                    Toast.makeText(this@RegistrationActivity, "Registration failed, but you can continue", Toast.LENGTH_LONG).show()
+                    navigateToDashboard()
+                }
             }
+        }
+    }
+
+    private fun registerUser(name: String, phone: String): Boolean {
+        return try {
+            val url = URL("https://giglytech-user-service-api.global.fintech23.xyz/api/v1/user/data-collector/auth")
+            val connection = url.openConnection() as HttpURLConnection
+
+            connection.requestMethod = "POST"
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("accept", "application/json")
+            connection.setRequestProperty("Accept-Language", "EN")
+            connection.connectTimeout = 10000
+            connection.readTimeout = 10000
+            connection.doOutput = true
+
+            val deviceId = android.provider.Settings.Secure.getString(
+                contentResolver,
+                android.provider.Settings.Secure.ANDROID_ID
+            )
+
+            val json = JSONObject().apply {
+                put("phoneNumber", phone)
+                put("name", name)
+                put("deviceId", deviceId)
+            }
+
+            connection.outputStream.use {
+                it.write(json.toString().toByteArray())
+            }
+
+            val responseCode = connection.responseCode
+            Log.d("RegistrationActivity", "API Response Code: $responseCode")
+
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                val response = connection.inputStream.bufferedReader().readText()
+                val responseJson = JSONObject(response)
+
+                Log.d("RegistrationActivity", "API Response: $response")
+
+                if (responseJson.getString("responseCode") == "S100000") {
+                    val data = responseJson.getJSONObject("data")
+                    val accessToken = data.getString("accessToken")
+                    val refreshToken = data.getString("refreshToken")
+
+                    // Save tokens
+                    val authPrefs = getSharedPreferences("uber_monitor_auth", MODE_PRIVATE)
+                    authPrefs.edit().apply {
+                        putString("access_token", accessToken)
+                        putString("refresh_token", refreshToken)
+                        putString("device_id", deviceId)
+                        apply()
+                    }
+
+                    Log.d("RegistrationActivity", "Tokens saved successfully")
+                    true
+                } else {
+                    Log.e("RegistrationActivity", "API returned error: ${responseJson.getString("responseMessage")}")
+                    false
+                }
+            } else {
+                Log.e("RegistrationActivity", "HTTP error: $responseCode")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e("RegistrationActivity", "Registration failed", e)
+            false
         }
     }
 
@@ -186,12 +230,15 @@ class RegistrationActivity : AppCompatActivity() {
             putString("user_name", name)
             putString("user_phone", phone)
             putBoolean("registered", true)
-            Log.d("RegistrationActivity", "user data saved: $name, $phone")
             apply()
         }
+        Log.d("RegistrationActivity", "User data saved: $name, $phone")
     }
 
-
+    private fun navigateToDashboard() {
+        startActivity(Intent(this@RegistrationActivity, DashboardActivity::class.java))
+        finish()
+    }
 
     override fun onDestroy() {
         super.onDestroy()
