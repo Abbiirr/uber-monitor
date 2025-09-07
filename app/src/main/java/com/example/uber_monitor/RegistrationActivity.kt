@@ -1,10 +1,19 @@
 package com.example.uber_monitor
 
 import android.content.Intent
+import android.graphics.Color
+import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.text.InputType
+import android.text.TextWatcher
+import android.text.Editable
+import android.view.Gravity
+import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import android.view.Gravity
+import androidx.cardview.widget.CardView
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
 import java.net.HttpURLConnection
 import java.net.URL
@@ -17,122 +26,290 @@ class RegistrationActivity : AppCompatActivity() {
     private lateinit var phoneInput: EditText
     private lateinit var submitButton: Button
     private lateinit var progressBar: ProgressBar
+    private lateinit var nameErrorText: TextView
+    private lateinit var phoneErrorText: TextView
 
     private val scope = CoroutineScope(Dispatchers.Main + Job())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val scrollView = ScrollView(this)
-        val layout = LinearLayout(this).apply {
+        // Main container with gradient background
+        val mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(50, 50, 50, 50)
+            setBackgroundColor(Color.parseColor("#FFF100")) // Uber yellow background
+        }
+
+        // Top section with welcome message
+        val topSection = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(50, 100, 50, 50)
             gravity = Gravity.CENTER_HORIZONTAL
         }
 
-        val titleText = TextView(this).apply {
-            text = "Driver Registration"
-            textSize = 24f
-            setPadding(0, 0, 0, 40)
+        // App logo/icon placeholder
+        val logoContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 30)
         }
 
+        val logoCircle = TextView(this).apply {
+            text = "🚗"
+            textSize = 48f
+            gravity = Gravity.CENTER
+            width = 120
+            height = 120
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.WHITE)
+            }
+        }
+
+        logoContainer.addView(logoCircle)
+
+        val titleText = TextView(this).apply {
+            text = "Welcome Driver!"
+            textSize = 28f
+            setTextColor(Color.BLACK)
+            setTypeface(typeface, Typeface.BOLD)
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 10)
+        }
+
+        val subtitleText = TextView(this).apply {
+            text = "Register to start monitoring your rides"
+            textSize = 16f
+            setTextColor(Color.parseColor("#333333"))
+            gravity = Gravity.CENTER
+            setPadding(0, 0, 0, 30)
+        }
+
+        topSection.addView(logoContainer)
+        topSection.addView(titleText)
+        topSection.addView(subtitleText)
+
+        // Card container for form
+        val cardView = CardView(this).apply {
+            radius = 20f
+            cardElevation = 10f
+            setCardBackgroundColor(Color.WHITE)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(30, 0, 30, 30)
+            }
+        }
+
+        val formLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(40, 40, 40, 40)
+        }
+
+        // Name input section
         val nameLabel = TextView(this).apply {
             text = "Full Name"
-            textSize = 16f
-            setPadding(0, 20, 0, 10)
+            textSize = 14f
+            setTextColor(Color.parseColor("#666666"))
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(0, 0, 0, 8)
         }
 
         nameInput = EditText(this).apply {
             hint = "Enter your full name"
+            textSize = 16f
+            setPadding(20, 30, 20, 30)
+            background = GradientDrawable().apply {
+                setStroke(2, Color.parseColor("#E0E0E0"))
+                cornerRadius = 12f
+                setColor(Color.parseColor("#F5F5F5"))
+            }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    validateName()
+                }
+                override fun afterTextChanged(s: Editable?) {}
+            })
         }
 
+        nameErrorText = TextView(this).apply {
+            text = ""
+            textSize = 12f
+            setTextColor(Color.RED)
+            setPadding(10, 4, 0, 0)
+            visibility = View.GONE
+        }
+
+        // Phone input section
         val phoneLabel = TextView(this).apply {
             text = "Phone Number"
-            textSize = 16f
-            setPadding(0, 30, 0, 10)
+            textSize = 14f
+            setTextColor(Color.parseColor("#666666"))
+            setTypeface(typeface, Typeface.BOLD)
+            setPadding(0, 20, 0, 8)
         }
 
         phoneInput = EditText(this).apply {
-            hint = "Enter your phone number (e.g. +8801XXXXXXXXX)"
-            inputType = android.text.InputType.TYPE_CLASS_PHONE
+            hint = "+8801XXXXXXXXX"
+            inputType = InputType.TYPE_CLASS_PHONE
+            textSize = 16f
+            setPadding(20, 30, 20, 30)
+            background = GradientDrawable().apply {
+                setStroke(2, Color.parseColor("#E0E0E0"))
+                cornerRadius = 12f
+                setColor(Color.parseColor("#F5F5F5"))
+            }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             )
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    validatePhone()
+                }
+                override fun afterTextChanged(s: Editable?) {}
+            })
         }
 
+        phoneErrorText = TextView(this).apply {
+            text = ""
+            textSize = 12f
+            setTextColor(Color.RED)
+            setPadding(10, 4, 0, 0)
+            visibility = View.GONE
+        }
+
+        // Progress bar
         progressBar = ProgressBar(this).apply {
-            visibility = android.view.View.GONE
+            visibility = View.GONE
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(0, 30, 0, 30)
+                gravity = Gravity.CENTER_HORIZONTAL
+                setMargins(0, 30, 0, 0)
             }
         }
 
+        // Submit button
         submitButton = Button(this).apply {
-            text = "Submit & Continue"
+            text = "Register & Continue"
+            textSize = 16f
+            setTextColor(Color.WHITE)
+            setTypeface(typeface, Typeface.BOLD)
+            background = GradientDrawable().apply {
+                setColor(Color.BLACK)
+                cornerRadius = 25f
+            }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
+                150
             ).apply {
-                setMargins(0, 40, 0, 20)
+                setMargins(0, 40, 0, 0)
             }
             setOnClickListener { handleSubmit() }
         }
 
-        val skipButton = Button(this).apply {
-            text = "Skip for now"
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            setOnClickListener {
-                saveUserData("Guest", "")
-                navigateToDashboard()
-            }
+        // Privacy note
+        val privacyText = TextView(this).apply {
+            text = "Your information is securely stored and used only for ride monitoring"
+            textSize = 11f
+            setTextColor(Color.parseColor("#999999"))
+            gravity = Gravity.CENTER
+            setPadding(0, 20, 0, 0)
         }
 
-        layout.addView(titleText)
-        layout.addView(nameLabel)
-        layout.addView(nameInput)
-        layout.addView(phoneLabel)
-        layout.addView(phoneInput)
-        layout.addView(progressBar)
-        layout.addView(submitButton)
-        layout.addView(skipButton)
+        // Add all views to form
+        formLayout.addView(nameLabel)
+        formLayout.addView(nameInput)
+        formLayout.addView(nameErrorText)
+        formLayout.addView(phoneLabel)
+        formLayout.addView(phoneInput)
+        formLayout.addView(phoneErrorText)
+        formLayout.addView(progressBar)
+        formLayout.addView(submitButton)
+        formLayout.addView(privacyText)
 
-        scrollView.addView(layout)
+        cardView.addView(formLayout)
+
+        // Add everything to main layout
+        mainLayout.addView(topSection)
+        mainLayout.addView(cardView)
+
+        // Wrap in ScrollView
+        val scrollView = ScrollView(this).apply {
+            addView(mainLayout)
+        }
+
         setContentView(scrollView)
     }
 
+    private fun validateName(): Boolean {
+        val name = nameInput.text.toString().trim()
+        return when {
+            name.isEmpty() -> {
+                nameErrorText.text = "Name is required"
+                nameErrorText.visibility = View.VISIBLE
+                false
+            }
+            name.length < 2 -> {
+                nameErrorText.text = "Name must be at least 2 characters"
+                nameErrorText.visibility = View.VISIBLE
+                false
+            }
+            else -> {
+                nameErrorText.visibility = View.GONE
+                true
+            }
+        }
+    }
+
+    private fun validatePhone(): Boolean {
+        val phone = phoneInput.text.toString().trim()
+        return when {
+            phone.isEmpty() -> {
+                phoneErrorText.text = "Phone number is required"
+                phoneErrorText.visibility = View.VISIBLE
+                false
+            }
+            !phone.startsWith("+") -> {
+                phoneErrorText.text = "Include country code (e.g., +880)"
+                phoneErrorText.visibility = View.VISIBLE
+                false
+            }
+            phone.length < 10 -> {
+                phoneErrorText.text = "Invalid phone number"
+                phoneErrorText.visibility = View.VISIBLE
+                false
+            }
+            else -> {
+                phoneErrorText.visibility = View.GONE
+                true
+            }
+        }
+    }
+
     private fun handleSubmit() {
+        val isNameValid = validateName()
+        val isPhoneValid = validatePhone()
+
+        if (!isNameValid || !isPhoneValid) {
+            return
+        }
+
         val name = nameInput.text.toString().trim()
         val phone = phoneInput.text.toString().trim()
 
-        if (name.isEmpty()) {
-            Toast.makeText(this, "Please enter your name", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        if (phone.isEmpty()) {
-            Toast.makeText(this, "Please enter your phone number", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        // Basic phone validation for international format
-        if (!phone.startsWith("+")) {
-            Toast.makeText(this, "Please enter phone number with country code (e.g. +880...)", Toast.LENGTH_SHORT).show()
-            return
-        }
-
         submitButton.isEnabled = false
-        progressBar.visibility = android.view.View.VISIBLE
+        submitButton.alpha = 0.6f
+        progressBar.visibility = View.VISIBLE
 
         scope.launch {
             saveUserData(name, phone)
@@ -143,14 +320,16 @@ class RegistrationActivity : AppCompatActivity() {
 
             delay(500)
             withContext(Dispatchers.Main) {
-                progressBar.visibility = android.view.View.GONE
+                progressBar.visibility = View.GONE
                 submitButton.isEnabled = true
+                submitButton.alpha = 1.0f
 
                 if (success) {
-                    Toast.makeText(this@RegistrationActivity, "Registration successful!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@RegistrationActivity, "Registration successful! 🎉", Toast.LENGTH_SHORT).show()
                     navigateToDashboard()
                 } else {
-                    Toast.makeText(this@RegistrationActivity, "Registration failed, but you can continue", Toast.LENGTH_LONG).show()
+                    // Even on failure, allow navigation but show error
+                    Toast.makeText(this@RegistrationActivity, "Network error. Continuing offline mode.", Toast.LENGTH_LONG).show()
                     navigateToDashboard()
                 }
             }
