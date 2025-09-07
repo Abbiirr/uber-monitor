@@ -1,6 +1,7 @@
 package com.example.uber_monitor
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -48,10 +49,15 @@ object ApiHelper {
                 if (refreshToken(context)) {
                     // Retry the original request with new token
                     return makeAuthenticatedRequest(context, urlString, method, body, retryCount + 1)
+                } else {
+                    // Refresh failed, clear registration and redirect
+                    handleAuthenticationFailure(context)
+                    return null
                 }
             } else if (responseCode == 401 && retryCount > 0) {
-                // Refresh failed, need to re-register
-                Log.e("ApiHelper", "Token refresh failed, user needs to clear data")
+                // Multiple 401s - clear registration and redirect
+                Log.e("ApiHelper", "Multiple 401 errors, clearing registration")
+                handleAuthenticationFailure(context)
                 return null
             }
 
@@ -62,6 +68,29 @@ object ApiHelper {
             Log.e("ApiHelper", "Request failed", e)
             return null
         }
+    }
+
+    private fun handleAuthenticationFailure(context: Context) {
+        // Clear registered flag
+        val userPrefs = context.getSharedPreferences("uber_monitor_user", Context.MODE_PRIVATE)
+        userPrefs.edit().apply {
+            putBoolean("registered", false)
+            apply()
+        }
+
+        // Clear auth tokens
+        val authPrefs = context.getSharedPreferences("uber_monitor_auth", Context.MODE_PRIVATE)
+        authPrefs.edit().apply {
+            remove("access_token")
+            remove("refresh_token")
+            apply()
+        }
+
+        // Navigate to registration
+        val intent = Intent(context, RegistrationActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        context.startActivity(intent)
     }
 
     private fun refreshToken(context: Context): Boolean {

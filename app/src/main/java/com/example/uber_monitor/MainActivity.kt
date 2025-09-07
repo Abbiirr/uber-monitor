@@ -30,6 +30,12 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Check if should skip to registration/dashboard
+        if (shouldSkipPermissions()) {
+            navigateToNextScreen()
+            return
+        }
+
         val scrollView = ScrollView(this)
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -81,21 +87,7 @@ class MainActivity : AppCompatActivity() {
             }
             visibility = android.view.View.GONE
             setOnClickListener {
-                val prefs = getSharedPreferences("uber_monitor_user", MODE_PRIVATE)
-                if (!prefs.getBoolean("registered", false)) {
-                    startActivity(Intent(this@MainActivity, RegistrationActivity::class.java))
-                }
-                finish()
-            }
-
-            setOnClickListener {
-                val prefs = getSharedPreferences("uber_monitor_user", MODE_PRIVATE)
-                if (!prefs.getBoolean("registered", false)) {
-                    startActivity(Intent(this@MainActivity, RegistrationActivity::class.java))
-                } else {
-                    startActivity(Intent(this@MainActivity, DashboardActivity::class.java))
-                }
-                finish()
+                navigateToNextScreen()
             }
         }
 
@@ -133,13 +125,44 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+
+        // Re-check if should navigate away (in case of returning from settings)
+        if (shouldSkipPermissions()) {
+            navigateToNextScreen()
+            return
+        }
+
         updatePermissionStatus()
         checkServiceStatus()
     }
 
+    private fun shouldSkipPermissions(): Boolean {
+        // Check if all permissions are already granted
+        val accessibilityEnabled = isAccessibilityServiceEnabled(this, RideAccessibilityService::class.java)
+        val usageAccessEnabled = isUsageAccessGranted(this)
+        return accessibilityEnabled && usageAccessEnabled
+    }
+
+    private fun navigateToNextScreen() {
+        val userPrefs = getSharedPreferences("uber_monitor_user", MODE_PRIVATE)
+        val isRegistered = userPrefs.getBoolean("registered", false)
+
+        val authPrefs = getSharedPreferences("uber_monitor_auth", MODE_PRIVATE)
+        val hasToken = !authPrefs.getString("access_token", "").isNullOrEmpty()
+
+        // Navigate based on registration status and token presence
+        val targetActivity = if (isRegistered && hasToken) {
+            DashboardActivity::class.java
+        } else {
+            RegistrationActivity::class.java
+        }
+
+        startActivity(Intent(this, targetActivity))
+        finish()
+    }
+
     private fun updatePermissionStatus() {
-        val accessibilityEnabled =
-            isAccessibilityServiceEnabled(this, RideAccessibilityService::class.java)
+        val accessibilityEnabled = isAccessibilityServiceEnabled(this, RideAccessibilityService::class.java)
         val usageAccessEnabled = isUsageAccessGranted(this)
         val allPermissionsGranted = accessibilityEnabled && usageAccessEnabled
 
@@ -152,7 +175,7 @@ class MainActivity : AppCompatActivity() {
             statusBuilder.append("✓ All permissions granted! Service is ready.")
             continueButton.visibility = android.view.View.VISIBLE
 
-            // Auto-close after showing success message
+            // Auto-navigate after showing success message
             if (!hasShownSuccessMessage) {
                 hasShownSuccessMessage = true
                 Toast.makeText(
@@ -161,10 +184,10 @@ class MainActivity : AppCompatActivity() {
                     Toast.LENGTH_LONG
                 ).show()
 
-                // Auto-close after 3 seconds
+                // Auto-navigate after 2 seconds
                 Handler(Looper.getMainLooper()).postDelayed({
-                    finish()
-                }, 3000)
+                    navigateToNextScreen()
+                }, 2000)
             }
         } else {
             statusBuilder.append("⚠ Please grant all permissions to start monitoring.")

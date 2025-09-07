@@ -173,14 +173,8 @@ class DashboardActivity : AppCompatActivity() {
                         setDefaultValues()
                     }
                 } ?: run {
-                    val authPrefs = getSharedPreferences("uber_monitor_auth", MODE_PRIVATE)
-                    if (authPrefs.getString("access_token", "").isNullOrEmpty()) {
-                        runOnUiThread {
-                            Toast.makeText(this@DashboardActivity,
-                                "Authentication failed. Please clear app data and try again.",
-                                Toast.LENGTH_LONG).show()
-                        }
-                    }
+                    // ApiHelper already handles navigation to registration on auth failure
+                    // Just set default values without showing toast
                     setDefaultValues()
                 }
 
