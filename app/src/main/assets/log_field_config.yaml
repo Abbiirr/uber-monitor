@@ -1,0 +1,9 @@
+ride_finish:
+  - fare
+  - discount
+ride_start:
+  - destination_location
+ride_request:
+  - pickup_location
+  - destination_location
+  - bonus
