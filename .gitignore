@@ -16,3 +16,4 @@ local.properties
 
 .idea/
 .kotlin/
+app/app/build/intermediates/app_metadata/debug/writeDebugAppMetadata/
