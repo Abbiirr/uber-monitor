@@ -2,264 +2,94 @@ package com.example.uber_monitor
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
-import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import java.text.SimpleDateFormat
-import java.util.*
+import com.example.uber_monitor.network.LogSender
+import com.example.uber_monitor.pathao.PathaoPageHandler
+import com.example.uber_monitor.uber.UberPageHandler
+import java.io.File
+import java.io.FileWriter
 
-class RideAccessibilityService : AccessibilityService() {
+class RideMonitorAccessibilityService : AccessibilityService() {
 
-    companion object {
-        private const val TAG = "UberAccService"
-        private const val UBER_DRIVER_PACKAGE = "com.ubercab.driver"
-        private const val UBER_PACKAGE = "com.ubercab"
-        private const val PATHAO_PACKAGE = "com.pathao"
-        private const val PATHAO_DRIVER_PACKAGE = "com.pathao.driver"
-    }
+    private val handler = Handler(Looper.getMainLooper())
+    private val intervalMs: Long = 500
+    private lateinit var pathaoHandler: PathaoPageHandler
+    private lateinit var uberHandler: UberPageHandler
 
-    private var lastPackageName = ""
+    private val logFiles = mapOf(
+        "com.pathao.driver" to "pathao_logs.txt",
+        "com.ubercab.driver" to "uber_logs.txt"
+    )
 
-    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (event == null || event.packageName == null) return
-
-        val packageName = event.packageName.toString()
-
-        if (packageName != lastPackageName) {
-            lastPackageName = packageName
-            Log.i(TAG, "Current app: $packageName")
-            updateServiceLog("Current app: $packageName")
-        }
-
-        when (packageName) {
-            UBER_DRIVER_PACKAGE -> {
-                Log.i(TAG, "UBER DRIVER DETECTED! Package: $packageName")
-                updateServiceLog("UBER DRIVER DETECTED!")
-                handleUberDriverEvent(event)
-            }
-            UBER_PACKAGE -> {
-                Log.i(TAG, "Uber passenger app detected: $packageName")
-                updateServiceLog("Uber passenger app active")
-                handleUberEvent(event)
-            }
-            PATHAO_DRIVER_PACKAGE -> {
-                Log.i(TAG, "Pathao Driver detected: $packageName")
-                updateServiceLog("Pathao Driver detected")
-            }
-            PATHAO_PACKAGE -> {
-                Log.i(TAG, "Pathao app detected: $packageName")
-                updateServiceLog("Pathao app active")
-            }
-            else -> {
-                if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-                    Log.d(TAG, "Other app: $packageName")
+    private val pollTask = object : Runnable {
+        override fun run() {
+            rootInActiveWindow?.let { root ->
+                val packageName = root.packageName?.toString()
+                when (packageName) {
+                    BuildConfig.PATHAO_PKG -> handlePathaoScreen(root)
+                    BuildConfig.UBER_PKG -> handleUberScreen(root)
                 }
             }
+            handler.postDelayed(this, intervalMs)
         }
-    }
-
-    private fun handleUberDriverEvent(event: AccessibilityEvent) {
-        Log.i(TAG, "Processing Uber Driver event")
-
-        val rootNode = rootInActiveWindow
-        if (rootNode == null) {
-            Log.d(TAG, "rootInActiveWindow is null")
-            return
-        }
-
-        try {
-            val allText = extractAllText(rootNode)
-            if (allText.isNotEmpty()) {
-                Log.i(TAG, "Uber Driver screen content: ${allText.take(200)}")
-                updateServiceLog("Uber Driver active - extracted ${allText.split(" ").size} words")
-
-                // Track statistics
-                trackRideStatistics(allText)
-            }
-
-            val targetNode = findUberDriverElements(rootNode)
-            if (targetNode != null) {
-                Log.i(TAG, "Found Uber Driver element: ${targetNode.text}")
-                updateServiceLog("Found: ${targetNode.text}")
-                targetNode.recycle()
-            }
-        } finally {
-            rootNode.recycle()
-        }
-    }
-
-    private fun trackRideStatistics(text: String) {
-        val prefs = getSharedPreferences("uber_monitor_stats", Context.MODE_PRIVATE)
-        val editor = prefs.edit()
-
-        // Look for ride-related keywords
-        when {
-            text.contains("Accept", ignoreCase = true) -> {
-                val totalRides = prefs.getInt("total_rides", 0) + 1
-                editor.putInt("total_rides", totalRides)
-            }
-            text.contains("Completed", ignoreCase = true) -> {
-                val accepted = prefs.getInt("accepted_rides", 0) + 1
-                editor.putInt("accepted_rides", accepted)
-            }
-            text.contains("Online", ignoreCase = true) -> {
-                editor.putLong("last_online_time", System.currentTimeMillis())
-            }
-            text.contains("৳") || text.contains("$") -> {
-                // Extract earnings if visible
-                val pattern = "[৳$]\\s?\\d+".toRegex()
-                pattern.find(text)?.let { match ->
-                    val amount = match.value.replace("[৳$\\s]".toRegex(), "").toFloatOrNull()
-                    if (amount != null) {
-                        val earnings = prefs.getFloat("total_earnings", 0f) + amount
-                        editor.putFloat("total_earnings", earnings)
-                    }
-                }
-            }
-        }
-
-        editor.apply()
-    }
-
-    private fun handleUberEvent(event: AccessibilityEvent) {
-        Log.i(TAG, "Processing regular Uber event")
-
-        val rootNode = rootInActiveWindow
-        if (rootNode == null) {
-            Log.d(TAG, "rootInActiveWindow is null")
-            return
-        }
-
-        try {
-            val targetNode = findTargetNode(rootNode)
-            if (targetNode != null) {
-                Log.i(TAG, "Found element: ${targetNode.text}")
-                updateServiceLog("Found: ${targetNode.text}")
-                targetNode.recycle()
-            }
-        } finally {
-            rootNode.recycle()
-        }
-    }
-
-    private fun findUberDriverElements(root: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
-        if (root == null) return null
-
-        val searchTerms = listOf(
-            "GO", "Accept", "Decline", "Online", "Offline",
-            "earnings", "trips", "Navigate", "Pickup", "Dropoff"
-        )
-
-        for (term in searchTerms) {
-            val nodes = root.findAccessibilityNodeInfosByText(term)
-            if (nodes.isNotEmpty()) {
-                Log.i(TAG, "Found Uber Driver element with text: $term")
-                return nodes[0]
-            }
-        }
-
-        return findNodeRecursive(root) { node ->
-            (node.isClickable || node.className == "android.widget.Button") &&
-                    node.text != null
-        }
-    }
-
-    private fun findTargetNode(root: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
-        if (root == null) return null
-
-        val textPatterns = listOf("Request", "Accept", "Decline", "Navigate")
-        for (text in textPatterns) {
-            val nodes = root.findAccessibilityNodeInfosByText(text)
-            if (nodes.isNotEmpty()) {
-                Log.i(TAG, "Found node with text: $text")
-                return nodes[0]
-            }
-        }
-
-        return findNodeRecursive(root) { node ->
-            node.className == "android.widget.Button" && node.isClickable
-        }
-    }
-
-    private fun findNodeRecursive(
-        node: AccessibilityNodeInfo?,
-        predicate: (AccessibilityNodeInfo) -> Boolean
-    ): AccessibilityNodeInfo? {
-        if (node == null) return null
-
-        if (predicate(node)) {
-            return node
-        }
-
-        for (i in 0 until node.childCount) {
-            val child = node.getChild(i) ?: continue
-            val result = findNodeRecursive(child, predicate)
-            if (result != null) {
-                return result
-            }
-            child.recycle()
-        }
-
-        return null
-    }
-
-    private fun extractAllText(node: AccessibilityNodeInfo?): String {
-        if (node == null) return ""
-
-        val builder = StringBuilder()
-        val queue = mutableListOf(node)
-
-        while (queue.isNotEmpty()) {
-            val current = queue.removeAt(0)
-
-            current.text?.let {
-                builder.append(it).append(" ")
-            }
-
-            for (i in 0 until current.childCount) {
-                current.getChild(i)?.let { queue.add(it) }
-            }
-        }
-
-        return builder.toString().trim()
-    }
-
-    override fun onInterrupt() {
-        Log.w(TAG, "Service interrupted")
     }
 
     override fun onServiceConnected() {
-        super.onServiceConnected()
-        val info = AccessibilityServiceInfo().apply {
-            eventTypes = AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
-                    AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
-                    AccessibilityEvent.TYPE_VIEW_CLICKED or
-                    AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED
-
-            packageNames = null
+        serviceInfo = AccessibilityServiceInfo().apply {
+            eventTypes = AccessibilityEvent.TYPES_ALL_MASK
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            notificationTimeout = 100
-            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+            notificationTimeout = 0
+            flags = AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or
+                    AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
                     AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            // Monitor both packages
+            packageNames = arrayOf(BuildConfig.PATHAO_PKG, BuildConfig.UBER_PKG)
         }
-        serviceInfo = info
-        Log.i(TAG, "Accessibility service connected")
-        updateServiceLog("Service started - Ready to detect Uber Driver")
+
+        LogSender.init(this)
+        pathaoHandler = PathaoPageHandler(this)
+        uberHandler = UberPageHandler(this)
+
+        handler.post(pollTask)
+        Log.i("RideMonitor", "Service connected - monitoring Pathao and Uber")
     }
 
-    private fun updateServiceLog(message: String) {
-        try {
-            val prefs = getSharedPreferences("uber_monitor_logs", Context.MODE_PRIVATE)
-            val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        // Using polling instead, but can handle specific events here if needed
+    }
 
-            prefs.edit().apply {
-                putString("last_log", "$timestamp: $message")
-                putInt("log_count", prefs.getInt("log_count", 0) + 1)
-                apply()
+    override fun onInterrupt() {}
+
+    override fun onDestroy() {
+        handler.removeCallbacks(pollTask)
+        super.onDestroy()
+    }
+
+    private fun handlePathaoScreen(root: AccessibilityNodeInfo) {
+        pathaoHandler.handle(root) { msg ->
+            logMessage("PATHAO", msg, "pathao_logs.txt")
+        }
+    }
+
+    private fun handleUberScreen(root: AccessibilityNodeInfo) {
+        uberHandler.handle(root) { msg ->
+            logMessage("UBER", msg, "uber_logs.txt")
+        }
+    }
+
+    private fun logMessage(app: String, msg: String, fileName: String) {
+        Log.d("RideMonitor-$app", msg)
+        try {
+            val file = File(getExternalFilesDir(null), fileName)
+            FileWriter(file, true).use {
+                it.append("${System.currentTimeMillis()}: $msg\n")
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error updating log", e)
+            Log.e("RideMonitor", "Log write error", e)
         }
     }
 }

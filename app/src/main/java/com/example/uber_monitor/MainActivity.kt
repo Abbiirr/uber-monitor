@@ -1,41 +1,55 @@
 package com.example.uber_monitor
 
+import android.app.AppOpsManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
-import android.widget.Button
-import android.widget.LinearLayout
-import android.widget.TextView
+import android.view.Gravity
+import android.view.View
+import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import android.content.ComponentName
-import android.app.AppOpsManager
-import android.view.Gravity
-import android.widget.ScrollView
-import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import android.Manifest
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        private const val LOCATION_REQUEST_CODE = 1001
+    }
+
     private lateinit var statusText: TextView
-    private lateinit var accessibilityButton: Button
-    private lateinit var usageAccessButton: Button
+    private lateinit var permissionButtons: Map<String, Button>
     private lateinit var continueButton: Button
-    private lateinit var logTextView: TextView
+    private lateinit var progressBar: ProgressBar
 
     private var hasShownSuccessMessage = false
+
+    // Permission configuration
+    private val requiredPermissions = listOf(
+        PermissionConfig("ride_accessibility", "Ride Monitoring", PermissionType.ACCESSIBILITY_RIDE),
+        PermissionConfig("usage_access", "App Detection", PermissionType.USAGE_ACCESS),
+        PermissionConfig("location", "Location Tracking", PermissionType.LOCATION)
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Check if should skip to registration/dashboard
-        if (shouldSkipPermissions()) {
+        if (checkAllPermissions() && isUserAuthenticated()) {
             navigateToNextScreen()
             return
         }
 
+        setupUI()
+    }
+
+    private fun setupUI() {
         val scrollView = ScrollView(this)
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -44,80 +58,62 @@ class MainActivity : AppCompatActivity() {
         }
 
         val titleText = TextView(this).apply {
-            text = "Uber Monitor Service"
+            text = "Ride Monitor Setup"
             textSize = 24f
             setPadding(0, 0, 0, 20)
         }
 
         statusText = TextView(this).apply {
-            text = "Checking permissions..."
+            text = "Grant permissions to continue"
             textSize = 16f
             setPadding(0, 20, 0, 40)
         }
 
-        accessibilityButton = Button(this).apply {
-            text = "Enable Accessibility Service"
+        progressBar = ProgressBar(this).apply {
+            visibility = View.GONE
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(0, 10, 0, 10)
+                gravity = Gravity.CENTER_HORIZONTAL
+                setMargins(0, 20, 0, 20)
             }
-            setOnClickListener { promptForAccessibilityService() }
         }
 
-        usageAccessButton = Button(this).apply {
-            text = "Enable Usage Access"
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(0, 10, 0, 10)
+        // Create permission buttons
+        val buttons = mutableMapOf<String, Button>()
+        requiredPermissions.forEach { config ->
+            buttons[config.id] = Button(this).apply {
+                text = "Enable ${config.displayName}"
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(0, 10, 0, 10)
+                }
+                setOnClickListener { requestPermission(config) }
             }
-            setOnClickListener { promptForUsageAccess() }
         }
+        permissionButtons = buttons
 
         continueButton = Button(this).apply {
             text = "Continue ✓"
+            visibility = View.GONE
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ).apply {
-                setMargins(0, 20, 0, 10)
+                setMargins(0, 30, 0, 10)
             }
-            visibility = android.view.View.GONE
-            setOnClickListener {
-                navigateToNextScreen()
-            }
+            setOnClickListener { navigateToNextScreen() }
         }
 
-        val instructionsText = TextView(this).apply {
-            text = """
-                Instructions:
-                1. Enable Accessibility Service to monitor app events
-                2. Enable Usage Access to detect foreground apps
-                3. Open Uber Driver app (com.ubercab.driver)
-                
-                The service will detect and log Uber Driver activity.
-            """.trimIndent()
-            textSize = 14f
-            setPadding(0, 40, 0, 20)
-        }
-
-        logTextView = TextView(this).apply {
-            text = "Service Logs:\n"
-            textSize = 12f
-            setPadding(20, 20, 20, 20)
-            setBackgroundColor(0xFFF0F0F0.toInt())
-        }
-
+        // Add all views
         layout.addView(titleText)
         layout.addView(statusText)
-        layout.addView(accessibilityButton)
-        layout.addView(usageAccessButton)
+        layout.addView(progressBar)
+        permissionButtons.values.forEach { layout.addView(it) }
         layout.addView(continueButton)
-        layout.addView(instructionsText)
-        layout.addView(logTextView)
 
         scrollView.addView(layout)
         setContentView(scrollView)
@@ -125,33 +121,97 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        updatePermissionUI()
 
-        // Re-check if should navigate away (in case of returning from settings)
-        if (shouldSkipPermissions()) {
-            navigateToNextScreen()
-            return
+        if (checkAllPermissions()) {
+            if (isUserAuthenticated()) {
+                handleAllPermissionsGranted()
+            } else {
+                navigateToNextScreen()
+            }
         }
-
-        updatePermissionStatus()
-        checkServiceStatus()
     }
 
-    private fun shouldSkipPermissions(): Boolean {
-        // Check if all permissions are already granted
-        val accessibilityEnabled = isAccessibilityServiceEnabled(this, RideAccessibilityService::class.java)
-        val usageAccessEnabled = isUsageAccessGranted(this)
-        return accessibilityEnabled && usageAccessEnabled
+    private fun checkAllPermissions(): Boolean {
+        return requiredPermissions.all { checkPermission(it.type) }
+    }
+
+    private fun checkPermission(type: PermissionType): Boolean {
+        return when (type) {
+            PermissionType.ACCESSIBILITY_RIDE ->
+                isAccessibilityServiceEnabled(RideMonitorAccessibilityService::class.java)
+            PermissionType.USAGE_ACCESS ->
+                isUsageAccessGranted()
+            PermissionType.LOCATION ->
+                hasLocationPermission()
+        }
+    }
+
+    private fun requestPermission(config: PermissionConfig) {
+        when (config.type) {
+            PermissionType.ACCESSIBILITY_RIDE-> {
+                AlertDialog.Builder(this)
+                    .setTitle("Enable ${config.displayName}")
+                    .setMessage("Enable accessibility service to monitor ${config.displayName.substringBefore(" ")} app.")
+                    .setPositiveButton("Settings") { _, _ ->
+                        startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    }
+                    .show()
+            }
+            PermissionType.USAGE_ACCESS -> {
+                AlertDialog.Builder(this)
+                    .setTitle("Enable Usage Access")
+                    .setMessage("Allow app usage tracking to detect active apps.")
+                    .setPositiveButton("Settings") { _, _ ->
+                        startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                    }
+                    .show()
+            }
+            PermissionType.LOCATION -> {
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ),
+                    LOCATION_REQUEST_CODE
+                )
+            }
+        }
+    }
+
+    private fun updatePermissionUI() {
+        val statuses = requiredPermissions.map { config ->
+            val granted = checkPermission(config.type)
+            permissionButtons[config.id]?.visibility = if (granted) View.GONE else View.VISIBLE
+            "${config.displayName}: ${if (granted) "✓" else "✗"}"
+        }
+
+        val allGranted = checkAllPermissions()
+        statusText.text = if (allGranted) {
+            "All permissions granted!"
+        } else {
+            statuses.joinToString("\n")
+        }
+
+        continueButton.visibility = if (allGranted) View.VISIBLE else View.GONE
+    }
+
+    private fun handleAllPermissionsGranted() {
+        if (!hasShownSuccessMessage) {
+            hasShownSuccessMessage = true
+            progressBar.visibility = View.VISIBLE
+            Toast.makeText(this, "Setup complete!", Toast.LENGTH_SHORT).show()
+
+            Handler(Looper.getMainLooper()).postDelayed({
+                startMonitorService()
+                navigateToNextScreen()
+            }, 1000)
+        }
     }
 
     private fun navigateToNextScreen() {
-        val userPrefs = getSharedPreferences("uber_monitor_user", MODE_PRIVATE)
-        val isRegistered = userPrefs.getBoolean("registered", false)
-
-        val authPrefs = getSharedPreferences("uber_monitor_auth", MODE_PRIVATE)
-        val hasToken = !authPrefs.getString("access_token", "").isNullOrEmpty()
-
-        // Navigate based on registration status and token presence
-        val targetActivity = if (isRegistered && hasToken) {
+        val targetActivity = if (isUserAuthenticated()) {
             DashboardActivity::class.java
         } else {
             RegistrationActivity::class.java
@@ -161,117 +221,73 @@ class MainActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun updatePermissionStatus() {
-        val accessibilityEnabled = isAccessibilityServiceEnabled(this, RideAccessibilityService::class.java)
-        val usageAccessEnabled = isUsageAccessGranted(this)
-        val allPermissionsGranted = accessibilityEnabled && usageAccessEnabled
+    private fun isUserAuthenticated(): Boolean {
+        val userPrefs = getSharedPreferences("uber_monitor_user", MODE_PRIVATE)
+        val authPrefs = getSharedPreferences("uber_monitor_auth", MODE_PRIVATE)
+        return userPrefs.getBoolean("registered", false) &&
+                !authPrefs.getString("access_token", "").isNullOrEmpty()
+    }
 
-        val statusBuilder = StringBuilder()
-        statusBuilder.append("Permissions Status:\n\n")
-        statusBuilder.append("✓ Accessibility: ${if (accessibilityEnabled) "Enabled ✓" else "Disabled ✗"}\n")
-        statusBuilder.append("✓ Usage Access: ${if (usageAccessEnabled) "Enabled ✓" else "Disabled ✗"}\n\n")
-
-        if (allPermissionsGranted) {
-            statusBuilder.append("✓ All permissions granted! Service is ready.")
-            continueButton.visibility = android.view.View.VISIBLE
-
-            // Auto-navigate after showing success message
-            if (!hasShownSuccessMessage) {
-                hasShownSuccessMessage = true
-                Toast.makeText(
-                    this,
-                    "All permissions granted! Service is running.",
-                    Toast.LENGTH_LONG
-                ).show()
-
-                // Auto-navigate after 2 seconds
-                Handler(Looper.getMainLooper()).postDelayed({
-                    navigateToNextScreen()
-                }, 2000)
-            }
-        } else {
-            statusBuilder.append("⚠ Please grant all permissions to start monitoring.")
-            continueButton.visibility = android.view.View.GONE
+    private fun startMonitorService() {
+        val intent = Intent(this, MonitorService::class.java).apply {
+            val userPrefs = getSharedPreferences("uber_monitor_user", MODE_PRIVATE)
+            putExtra("user_name", userPrefs.getString("user_name", ""))
+            putExtra("user_phone", userPrefs.getString("user_phone", ""))
         }
-
-        statusText.text = statusBuilder.toString()
-
-        accessibilityButton.isEnabled = !accessibilityEnabled
-        accessibilityButton.text =
-            if (accessibilityEnabled) "Accessibility Service Enabled ✓" else "Enable Accessibility Service"
-        accessibilityButton.visibility =
-            if (accessibilityEnabled) android.view.View.GONE else android.view.View.VISIBLE
-
-        usageAccessButton.isEnabled = !usageAccessEnabled
-        usageAccessButton.text =
-            if (usageAccessEnabled) "Usage Access Enabled ✓" else "Enable Usage Access"
-        usageAccessButton.visibility =
-            if (usageAccessEnabled) android.view.View.GONE else android.view.View.VISIBLE
+        ContextCompat.startForegroundService(this, intent)
     }
 
-    private fun checkServiceStatus() {
-        val prefs = getSharedPreferences("uber_monitor_logs", MODE_PRIVATE)
-        val lastLog = prefs.getString("last_log", "No recent activity")
-        val logCount = prefs.getInt("log_count", 0)
-
-        logTextView.text = """
-            Service Logs:
-            Total events logged: $logCount
-            Last activity: $lastLog
-            
-            Monitoring for:
-            - com.ubercab.driver (Uber Driver)
-            - com.ubercab (Uber)
-            - com.pathao (Pathao)
-            - com.pathao.driver (Pathao Driver)
-        """.trimIndent()
-    }
-
-    private fun isAccessibilityServiceEnabled(context: Context, service: Class<*>): Boolean {
-        val expectedComponentName = ComponentName(context, service)
-        val enabledServicesSetting = Settings.Secure.getString(
-            context.contentResolver,
+    // Permission check helpers
+    private fun isAccessibilityServiceEnabled(service: Class<*>): Boolean {
+        val expected = ComponentName(this, service)
+        val enabledServices = Settings.Secure.getString(
+            contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
         ) ?: return false
 
-        return enabledServicesSetting.split(":").any {
-            ComponentName.unflattenFromString(it)
-                ?.flattenToString() == expectedComponentName.flattenToString()
+        return enabledServices.split(":").any {
+            ComponentName.unflattenFromString(it)?.flattenToString() == expected.flattenToString()
         }
     }
 
-    private fun isUsageAccessGranted(context: Context): Boolean {
-        val appOpsManager = context.getSystemService(Context.APP_OPS_SERVICE) as? AppOpsManager
-            ?: return false
-        val mode = appOpsManager.checkOpNoThrow(
+    private fun isUsageAccessGranted(): Boolean {
+        val appOps = getSystemService(AppOpsManager::class.java)
+        val mode = appOps.checkOpNoThrow(
             AppOpsManager.OPSTR_GET_USAGE_STATS,
             android.os.Process.myUid(),
-            context.packageName
+            packageName
         )
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
-    private fun promptForAccessibilityService() {
-        AlertDialog.Builder(this)
-            .setTitle("Enable Accessibility Service")
-            .setMessage("To monitor UI changes for Uber and Pathao, please enable the accessibility service in settings.\n\nYou'll need to find 'Uber Monitor' in the list and enable it.")
-            .setPositiveButton("Open Settings") { _, _ ->
-                val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-                startActivity(intent)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+    private fun hasLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun promptForUsageAccess() {
-        AlertDialog.Builder(this)
-            .setTitle("Enable Usage Access")
-            .setMessage("To detect when apps are in the foreground, please allow usage access in settings.\n\nFind 'Uber Monitor' and enable the permission.")
-            .setPositiveButton("Open Settings") { _, _ ->
-                val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-                startActivity(intent)
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == LOCATION_REQUEST_CODE) {
+            updatePermissionUI()
+        }
+    }
+
+    // Data classes
+    data class PermissionConfig(
+        val id: String,
+        val displayName: String,
+        val type: PermissionType
+    )
+
+    enum class PermissionType {
+        ACCESSIBILITY_RIDE,
+        USAGE_ACCESS,
+        LOCATION
     }
 }
