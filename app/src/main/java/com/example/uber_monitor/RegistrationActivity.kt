@@ -34,10 +34,14 @@ class RegistrationActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Main container with gradient background
+        // Main container with gradient background - no ScrollView
         val mainLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.parseColor("#FFF100")) // Uber yellow background
+            setBackgroundColor(Color.parseColor("#81C784")) // Uber yellow background
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.MATCH_PARENT
+            )
         }
 
         // Top section with welcome message
@@ -59,7 +63,7 @@ class RegistrationActivity : AppCompatActivity() {
             textSize = 48f
             gravity = Gravity.CENTER
             width = 120
-            height = 120
+            height = 300
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(Color.WHITE)
@@ -96,15 +100,15 @@ class RegistrationActivity : AppCompatActivity() {
             setCardBackgroundColor(Color.WHITE)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
+                LinearLayout.LayoutParams.MATCH_PARENT
             ).apply {
-                setMargins(30, 0, 30, 30)
+                setMargins(20, 0, 20, 20)
             }
         }
 
         val formLayout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(40, 40, 40, 40)
+            setPadding(30, 30, 30, 30)
         }
 
         // Name input section
@@ -243,12 +247,7 @@ class RegistrationActivity : AppCompatActivity() {
         mainLayout.addView(topSection)
         mainLayout.addView(cardView)
 
-        // Wrap in ScrollView
-        val scrollView = ScrollView(this).apply {
-            addView(mainLayout)
-        }
-
-        setContentView(scrollView)
+        setContentView(mainLayout)
     }
 
     private fun validateName(): Boolean {
