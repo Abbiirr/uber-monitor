@@ -75,7 +75,7 @@ class RegistrationActivity : AppCompatActivity() {
         val titleText = TextView(this).apply {
             text = "Welcome Driver!"
             textSize = 28f
-            setTextColor(Color.BLACK)
+            setTextColor(Color.parseColor("#1B5E20"))
             setTypeface(typeface, Typeface.BOLD)
             gravity = Gravity.CENTER
             setPadding(0, 0, 0, 10)
@@ -84,7 +84,7 @@ class RegistrationActivity : AppCompatActivity() {
         val subtitleText = TextView(this).apply {
             text = "Register to start monitoring your rides"
             textSize = 16f
-            setTextColor(Color.parseColor("#333333"))
+            setTextColor(Color.parseColor("#558B2F"))
             gravity = Gravity.CENTER
             setPadding(0, 0, 0, 30)
         }
@@ -115,7 +115,7 @@ class RegistrationActivity : AppCompatActivity() {
         val nameLabel = TextView(this).apply {
             text = "Full Name"
             textSize = 14f
-            setTextColor(Color.parseColor("#666666"))
+            setTextColor(Color.parseColor("#558B2F"))
             setTypeface(typeface, Typeface.BOLD)
             setPadding(0, 0, 0, 8)
         }
@@ -125,9 +125,9 @@ class RegistrationActivity : AppCompatActivity() {
             textSize = 16f
             setPadding(20, 30, 20, 30)
             background = GradientDrawable().apply {
-                setStroke(2, Color.parseColor("#E0E0E0"))
+                setStroke(2, Color.parseColor("#A5D6A7"))
                 cornerRadius = 12f
-                setColor(Color.parseColor("#F5F5F5"))
+                setColor(Color.parseColor("#F1F8E9"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -145,7 +145,7 @@ class RegistrationActivity : AppCompatActivity() {
         nameErrorText = TextView(this).apply {
             text = ""
             textSize = 12f
-            setTextColor(Color.RED)
+            setTextColor(Color.parseColor("#D32F2F"))
             setPadding(10, 4, 0, 0)
             visibility = View.GONE
         }
@@ -154,7 +154,7 @@ class RegistrationActivity : AppCompatActivity() {
         val phoneLabel = TextView(this).apply {
             text = "Phone Number"
             textSize = 14f
-            setTextColor(Color.parseColor("#666666"))
+            setTextColor(Color.parseColor("#558B2F"))
             setTypeface(typeface, Typeface.BOLD)
             setPadding(0, 20, 0, 8)
         }
@@ -165,9 +165,9 @@ class RegistrationActivity : AppCompatActivity() {
             textSize = 16f
             setPadding(20, 30, 20, 30)
             background = GradientDrawable().apply {
-                setStroke(2, Color.parseColor("#E0E0E0"))
+                setStroke(2, Color.parseColor("#A5D6A7"))
                 cornerRadius = 12f
-                setColor(Color.parseColor("#F5F5F5"))
+                setColor(Color.parseColor("#F1F8E9"))
             }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -185,7 +185,7 @@ class RegistrationActivity : AppCompatActivity() {
         phoneErrorText = TextView(this).apply {
             text = ""
             textSize = 12f
-            setTextColor(Color.RED)
+            setTextColor(Color.parseColor("#D32F2F"))
             setPadding(10, 4, 0, 0)
             visibility = View.GONE
         }
@@ -209,7 +209,7 @@ class RegistrationActivity : AppCompatActivity() {
             setTextColor(Color.WHITE)
             setTypeface(typeface, Typeface.BOLD)
             background = GradientDrawable().apply {
-                setColor(Color.BLACK)
+                setColor(Color.parseColor("#2E7D32"))
                 cornerRadius = 25f
             }
             layoutParams = LinearLayout.LayoutParams(
@@ -225,7 +225,7 @@ class RegistrationActivity : AppCompatActivity() {
         val privacyText = TextView(this).apply {
             text = "Your information is securely stored and used only for ride monitoring"
             textSize = 11f
-            setTextColor(Color.parseColor("#999999"))
+            setTextColor(Color.parseColor("#689F38"))
             gravity = Gravity.CENTER
             setPadding(0, 20, 0, 0)
         }

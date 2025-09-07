@@ -2,9 +2,13 @@
 <resources>
     <!-- Primary Colors -->
     <color name="primary_yellow">#FFF100</color>
-    <color name="primary_green">#4CAF50</color>
     <color name="primary_blue">#2196F3</color>
 
+    <color name="primary_green">#81C784</color>
+    <color name="button_green">#2E7D32</color>
+    <color name="text_primary">#1B5E20</color>
+    <color name="text_secondary">#558B2F</color>
+    <color name="accent_amber">#FFC107</color>
     <!-- Basic Colors -->
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
